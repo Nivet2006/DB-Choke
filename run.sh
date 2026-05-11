@@ -10,7 +10,7 @@ CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 print_banner() {
   echo -e "${CYAN}"
   echo "  ╔═════════════════════════════════════════════════╗"
-  echo "  ║              DATABASE CHOCKE                    ║"
+  echo "  ║              DATABASE CHOCK                     ║"
   echo "  ║               ft. SNAKEKING                     ║"
   echo "  ╚═════════════════════════════════════════════════╝"
   echo -e "${NC}"
