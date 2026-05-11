@@ -1,7 +1,3 @@
-/**
- * torManager.js — Multi-instance Tor manager
- * Spawns one Tor process per parallel worker = unique IP per registration
- */
 
 const { execSync, spawn } = require('child_process');
 const fs = require('fs');
@@ -10,9 +6,6 @@ const net = require('net');
 
 const TOR_DATA_DIR = path.join(__dirname, '..', '.tor_instances');
 
-/**
- * Check if a port is available
- */
 function isPortFree(port) {
   return new Promise((resolve) => {
     const server = net.createServer();
@@ -22,9 +15,6 @@ function isPortFree(port) {
   });
 }
 
-/**
- * Wait until a SOCKS port is accepting connections
- */
 function waitForPort(port, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
@@ -43,16 +33,8 @@ function waitForPort(port, timeoutMs = 30000) {
   });
 }
 
-/**
- * Spawn multiple isolated Tor instances
- * Each gets its own SocksPort, DataDirectory, and exit IP
- *
- * @param {number} count - Number of Tor instances to spawn
- * @param {number} basePort - Starting SOCKS port (default 9150)
- * @returns {Promise<{instances: Array<{port: number, process: ChildProcess}>, cleanup: Function}>}
- */
 async function spawnTorInstances(count, basePort = 9150) {
-  // Create data dir
+
   if (!fs.existsSync(TOR_DATA_DIR)) {
     fs.mkdirSync(TOR_DATA_DIR, { recursive: true });
   }
@@ -61,16 +43,14 @@ async function spawnTorInstances(count, basePort = 9150) {
   console.log(`[TOR] Launching ${count} isolated Tor instances...`);
 
   for (let i = 0; i < count; i++) {
-    const socksPort = basePort + (i * 2);       // 9150, 9152, 9154, ...
-    const controlPort = basePort + (i * 2) + 1; // 9151, 9153, 9155, ...
+    const socksPort = basePort + (i * 2);
+    const controlPort = basePort + (i * 2) + 1;
     const dataDir = path.join(TOR_DATA_DIR, `tor_${i}`);
 
-    // Create isolated data directory
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
 
-    // Check if ports are free
     const socksFree = await isPortFree(socksPort);
     const ctrlFree = await isPortFree(controlPort);
 
@@ -80,7 +60,6 @@ async function spawnTorInstances(count, basePort = 9150) {
       continue;
     }
 
-    // Spawn Tor with isolated config
     const torProcess = spawn('tor', [
       '--SocksPort', String(socksPort),
       '--ControlPort', String(controlPort),
@@ -89,7 +68,7 @@ async function spawnTorInstances(count, basePort = 9150) {
       '--HashedControlPassword', '',
       '--Log', 'notice stderr',
       '--RunAsDaemon', '0',
-      // Force unique circuits
+
       '--NewCircuitPeriod', '15',
       '--MaxCircuitDirtiness', '15',
     ], {
@@ -112,7 +91,6 @@ async function spawnTorInstances(count, basePort = 9150) {
     console.log(`[TOR-${i}] Spawned on SOCKS:${socksPort} Control:${controlPort}`);
   }
 
-  // Wait for all instances to be ready
   console.log(`[TOR] Waiting for ${count} instances to bootstrap...`);
   const readyPromises = instances.map(async (inst, idx) => {
     try {
@@ -126,7 +104,6 @@ async function spawnTorInstances(count, basePort = 9150) {
 
   console.log(`[TOR] All ${count} instances ready — each worker gets a unique IP`);
 
-  // Cleanup function to kill all Tor processes
   const cleanup = () => {
     console.log('[TOR] Shutting down all Tor instances...');
     for (const inst of instances) {
@@ -139,9 +116,6 @@ async function spawnTorInstances(count, basePort = 9150) {
   return { instances, cleanup };
 }
 
-/**
- * Request a new circuit on a specific Tor instance via its control port
- */
 function rotateCircuit(controlPort) {
   try {
     execSync(
@@ -149,14 +123,10 @@ function rotateCircuit(controlPort) {
       { timeout: 5000, stdio: 'pipe' }
     );
   } catch {
-    // Silent fail — Tor auto-rotates anyway
+
   }
 }
 
-/**
- * Quick single-instance Tor setup (fallback)
- * Uses the system Tor on port 9050
- */
 function ensureSystemTor() {
   try {
     execSync('pgrep -x tor', { stdio: 'pipe' });

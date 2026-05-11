@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# ╔══════════════════════════════════════════════════════════════════╗
-# ║       ESTRALIS BOT — Kali Linux Setup & Run Script             ║
-# ║       Supports: Parallel Execution + Tor IP Rotation           ║
-# ║       Double-click or run: bash run.sh                         ║
-# ╚══════════════════════════════════════════════════════════════════╝
-
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -16,8 +10,8 @@ CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 print_banner() {
   echo -e "${CYAN}"
   echo "  ╔═════════════════════════════════════════════════╗"
-  echo "  ║         ESTRALIS BOT v2.0                       ║"
-  echo "  ║   Parallel Registration + Tor IP Rotation       ║"
+  echo "  ║              DATABASE CHOCKER                   ║"
+  echo "  ║               ft. SNAKEKING                     ║"
   echo "  ╚═════════════════════════════════════════════════╝"
   echo -e "${NC}"
 }
@@ -26,15 +20,11 @@ log_step() { echo -e "\n${GREEN}[✓]${NC} ${BOLD}$1${NC}"; }
 log_warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 log_err()  { echo -e "${RED}[✗]${NC} $1"; }
 
-# ── Checks ────────────────────────────────────────────────────────
-
 needs_setup() {
   if ! command -v node &>/dev/null; then return 0; fi
   if [ ! -d "$SCRIPT_DIR/node_modules" ]; then return 0; fi
   return 1
 }
-
-# ── Install functions ─────────────────────────────────────────────
 
 install_node() {
   if command -v node &>/dev/null; then
@@ -60,10 +50,10 @@ install_system_deps() {
 install_tor() {
   log_step "Installing & configuring Tor..."
   sudo apt install -y tor
-  # Enable Tor control port for circuit rotation
+
   sudo sed -i 's/#ControlPort 9051/ControlPort 9051/' /etc/tor/torrc 2>/dev/null || true
   sudo sed -i 's/#CookieAuthentication 1/CookieAuthentication 0/' /etc/tor/torrc 2>/dev/null || true
-  # Allow empty password auth for NEWNYM
+
   if ! grep -q "HashedControlPassword" /etc/tor/torrc; then
     echo 'HashedControlPassword ""' | sudo tee -a /etc/tor/torrc >/dev/null 2>&1 || true
   fi
@@ -89,7 +79,7 @@ install_playwright() {
 }
 
 create_dirs() {
-  mkdir -p "$SCRIPT_DIR"/{uploads,logs,generated_receipts,screenshots}
+  mkdir -p "$SCRIPT_DIR"/{uploads,logs,generated_receipts,screenshots,logos}
 }
 
 install_cloudflared() {
@@ -115,14 +105,11 @@ run_setup() {
   log_step "Setup complete!"
 }
 
-# Count names in NAMES.TXT
 get_name_count() {
   if [ -f "$SCRIPT_DIR/NAMES.TXT" ]; then
     grep -c . "$SCRIPT_DIR/NAMES.TXT" 2>/dev/null || echo 0
   else echo 0; fi
 }
-
-# ── Check Tor status ──────────────────────────────────────────────
 
 check_tor() {
   if systemctl is-active --quiet tor 2>/dev/null || pgrep -x tor >/dev/null 2>&1; then
@@ -131,8 +118,6 @@ check_tor() {
     echo -e "  Tor: ${RED}STOPPED${NC} — start with: sudo systemctl start tor"
   fi
 }
-
-# ── Menu ──────────────────────────────────────────────────────────
 
 show_menu() {
   NAME_COUNT=$(get_name_count)
@@ -160,8 +145,6 @@ show_menu() {
   echo ""
   echo -n "Choice: "
 }
-
-# ── Main ──────────────────────────────────────────────────────────
 
 print_banner
 create_dirs
@@ -242,21 +225,21 @@ while true; do
       ;;
     8)
       log_step "Starting Bot + Dashboard + Tunnel (all-in-one)..."
-      # Start dashboard
+
       node "$SCRIPT_DIR/dashboard/server.js" &
       DASH_PID=$!
       sleep 1
-      # Start tunnel
+
       cloudflared tunnel --url http://localhost:4000 &
       CF_PID=$!
       sleep 3
       echo ""
       echo -n "Parallel workers? [10]: "; read -r workers
       workers=${workers:-10}
-      # Start bot
+
       log_step "Bot starting... Dashboard is live. Watch the tunnel URL above."
       node "$SCRIPT_DIR/index.js" --parallel "$workers" --proxy tor
-      # Cleanup
+
       kill $DASH_PID $CF_PID 2>/dev/null
       log_step "Bot finished. Dashboard + Tunnel stopped."
       ;;

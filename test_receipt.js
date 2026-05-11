@@ -1,4 +1,4 @@
-// Quick test script to generate a sample payment receipt
+
 const { generatePaymentReceipt } = require('./utils/paymentGenerator');
 
 (async () => {

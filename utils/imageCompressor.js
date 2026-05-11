@@ -1,26 +1,13 @@
-/**
- * imageCompressor.js — Image compression utility
- * Ensures all generated receipt images stay under 1 MB
- */
 
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 
-const MAX_SIZE_BYTES = 1_000_000; // 1 MB limit
+const MAX_SIZE_BYTES = 1_000_000;
 
-/**
- * Compress an image file to ensure it's under 1 MB
- * Uses progressive quality reduction and resizing if needed
- *
- * @param {string} inputPath - Path to the source image
- * @param {string} [outputPath] - Path to save compressed image (defaults to overwriting input)
- * @returns {Promise<string>} - Path to the compressed image
- */
 async function compressImage(inputPath, outputPath) {
   const targetPath = outputPath || inputPath;
 
-  // Check if already under limit
   const stats = fs.statSync(inputPath);
   if (stats.size <= MAX_SIZE_BYTES) {
     console.log(`[COMPRESS] Image already under 1 MB (${(stats.size / 1024).toFixed(1)} KB)`);
@@ -32,7 +19,6 @@ async function compressImage(inputPath, outputPath) {
 
   console.log(`[COMPRESS] Original size: ${(stats.size / 1024).toFixed(1)} KB — compressing...`);
 
-  // Try progressive quality reduction
   let quality = 85;
   let buffer;
 
@@ -52,7 +38,6 @@ async function compressImage(inputPath, outputPath) {
     quality -= 10;
   }
 
-  // If still too large, resize down
   const metadata = await sharp(inputPath).metadata();
   let width = metadata.width || 800;
 
@@ -72,20 +57,13 @@ async function compressImage(inputPath, outputPath) {
     }
   }
 
-  // Last resort — just save the smallest we got
   fs.writeFileSync(targetPath, buffer);
   console.log(`[COMPRESS] Final size: ${(buffer.length / 1024).toFixed(1)} KB`);
   return targetPath;
 }
 
-/**
- * Compress a PNG buffer to JPEG and ensure it's under 1 MB
- * @param {Buffer} pngBuffer - PNG image buffer
- * @param {string} outputPath - Path to save the compressed image
- * @returns {Promise<string>} - Path to the compressed image
- */
 async function compressBuffer(pngBuffer, outputPath) {
-  // First try direct JPEG conversion at high quality
+
   let quality = 90;
   let buffer;
 
@@ -105,7 +83,6 @@ async function compressBuffer(pngBuffer, outputPath) {
     quality -= 10;
   }
 
-  // Resize if needed
   let width = 800;
   while (width >= 200) {
     buffer = await sharp(pngBuffer)
@@ -124,7 +101,6 @@ async function compressBuffer(pngBuffer, outputPath) {
     width = Math.floor(width * 0.75);
   }
 
-  // Save whatever we have
   fs.writeFileSync(outputPath, buffer);
   console.log(`[COMPRESS] Final buffer size: ${(buffer.length / 1024).toFixed(1)} KB`);
   return outputPath;

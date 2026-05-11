@@ -1,28 +1,14 @@
-/**
- * Estralis Bot — Main automation script
- * 
- * Usage:
- *   node index.js [count] [--parallel N] [--proxy tor|file] [--headful]
- * 
- * Examples:
- *   node index.js 100 --parallel 10 --proxy tor       ← 100 regs, 10 at a time, Tor IP rotation
- *   node index.js 50 --parallel 5 --proxy file         ← 50 regs, 5 parallel, proxy list
- *   node index.js 20 --parallel 20 --headful           ← 20 regs all at once, visible browser
- *   HEADLESS=false node index.js 5                      ← 5 sequential, visible browser
- */
 
 const { chromium } = require('@playwright/test');
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
 const { generateRegistrationData, humanDelay, randomInt } = require('./utils/randomData');
 const { generatePaymentReceipt } = require('./utils/paymentGenerator');
 const { appendRecord, ensureCsvFile } = require('./utils/csv');
 const { spawnTorInstances, rotateCircuit, ensureSystemTor } = require('./utils/torManager');
 
-// ── Parse CLI arguments ───────────────────────────────────────────────────────
 const args = process.argv.slice(2);
 
 function getArg(flag) {
@@ -35,23 +21,20 @@ function hasFlag(flag) {
   return args.includes(flag);
 }
 
-// First non-flag arg is count; defaults to number of names in NAMES.TXT
 const cliCount = args.find((a) => /^\d+$/.test(a));
 const COUNT = cliCount
   ? parseInt(cliCount, 10)
   : fs.readFileSync(path.join(__dirname, 'NAMES.TXT'), 'utf-8').split('\n').filter(l => l.trim()).length;
 const PARALLEL = parseInt(getArg('--parallel') || getArg('-p'), 10) || 1;
-const PROXY_MODE = getArg('--proxy') || 'none'; // 'tor', 'file', 'none'
+const PROXY_MODE = getArg('--proxy') || 'none';
 const HEADLESS = hasFlag('--headful') ? false : process.env.HEADLESS !== 'false';
 
-// ── Directories ───────────────────────────────────────────────────────────────
-const DIRS = ['uploads', 'logs', 'generated_receipts', 'screenshots'];
+const DIRS = ['uploads', 'logs', 'generated_receipts', 'screenshots', 'logos'];
 for (const dir of DIRS) {
   const p = path.join(__dirname, dir);
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
 }
 
-// ── Logger (thread-safe append) ───────────────────────────────────────────────
 const LOG_FILE = path.join(__dirname, 'logs', `run_${Date.now()}.log`);
 function log(msg) {
   const line = `[${new Date().toISOString()}] ${msg}`;
@@ -59,21 +42,13 @@ function log(msg) {
   try { fs.appendFileSync(LOG_FILE, line + '\n'); } catch {}
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
 const BASE_URL = 'https://estralisfest2026.vercel.app/';
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  PROXY / IP ROTATION — Each worker gets its own Tor instance = unique IP
-// ══════════════════════════════════════════════════════════════════════════════
-
-let torInstances = [];  // Populated at startup when --proxy tor
+let torInstances = [];
 let torCleanup = null;
 let proxyList = [];
 let proxyIndex = 0;
 
-/**
- * Load proxies from proxies.txt
- */
 function loadProxyList() {
   const proxyFile = path.join(__dirname, 'proxies.txt');
   if (!fs.existsSync(proxyFile)) {
@@ -86,11 +61,6 @@ function loadProxyList() {
   return proxies;
 }
 
-/**
- * Get proxy for a specific worker index
- * With Tor: each worker maps to its own Tor instance (unique IP)
- * With file: round-robin through proxy list
- */
 function getProxy(workerIndex) {
   if (PROXY_MODE === 'tor' && torInstances.length > 0) {
     const inst = torInstances[workerIndex % torInstances.length];
@@ -105,9 +75,6 @@ function getProxy(workerIndex) {
   return null;
 }
 
-/**
- * Rotate IP for a specific worker's Tor instance
- */
 function rotateWorkerIP(workerIndex) {
   if (PROXY_MODE === 'tor' && torInstances.length > 0) {
     const inst = torInstances[workerIndex % torInstances.length];
@@ -115,18 +82,12 @@ function rotateWorkerIP(workerIndex) {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  HELPERS
-// ══════════════════════════════════════════════════════════════════════════════
-
-/** Take a screenshot and save it */
 async function snap(page, name) {
   const file = path.join(__dirname, 'screenshots', `${name}_${Date.now()}.png`);
   try { await page.screenshot({ path: file, fullPage: false }); } catch {}
   return file;
 }
 
-/** Scroll inside the scrollable modal container */
 async function scrollModalToBottom(page) {
   await page.evaluate(() => {
     const allEls = document.querySelectorAll('*');
@@ -143,7 +104,6 @@ async function scrollModalToBottom(page) {
   await page.waitForTimeout(500);
 }
 
-/** Gradually scroll a modal container (simulates human scrolling) */
 async function scrollModalGradually(page) {
   await page.evaluate(async () => {
     const allEls = document.querySelectorAll('*');
@@ -166,7 +126,6 @@ async function scrollModalGradually(page) {
   await page.waitForTimeout(400);
 }
 
-/** Click a button by visible text with fallbacks */
 async function clickByText(page, text) {
   const selectors = [
     `text="${text}"`,
@@ -182,7 +141,7 @@ async function clickByText(page, text) {
       return true;
     } catch { continue; }
   }
-  // JS fallback
+
   const clicked = await page.evaluate((t) => {
     const btns = [...document.querySelectorAll('button, a, div, span')];
     const btn = btns.find((b) => b.textContent.toUpperCase().includes(t.toUpperCase()) && b.offsetParent !== null);
@@ -193,7 +152,6 @@ async function clickByText(page, text) {
   throw new Error(`Element not found: "${text}"`);
 }
 
-/** Fill an input by placeholder */
 async function fillByPlaceholder(page, placeholder, value) {
   const input = page.locator(`input[placeholder*="${placeholder}" i], textarea[placeholder*="${placeholder}" i]`).first();
   await input.waitFor({ state: 'visible', timeout: 10000 });
@@ -205,21 +163,15 @@ async function fillByPlaceholder(page, placeholder, value) {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  SINGLE REGISTRATION FLOW
-// ══════════════════════════════════════════════════════════════════════════════
-
 async function runRegistration(browser, regIndex, totalCount) {
   const regData = generateRegistrationData();
   let eventName = 'Unknown Event';
 
-  // Build context options
   const ctxOpts = {
     viewport: { width: 1280, height: 900 },
     userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   };
 
-  // Apply proxy if configured
   const proxy = getProxy(regIndex);
   if (proxy) ctxOpts.proxy = proxy;
 
@@ -232,16 +184,13 @@ async function runRegistration(browser, regIndex, totalCount) {
   try {
     log(`${tag} ▶ Starting — ${regData.fullName} | ${regData.email}${proxy ? ' | Proxy: ' + proxy.server : ''}`);
 
-    // STEP 1: Open homepage
     await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 60000 });
     await humanDelay(page, 800, 1500);
 
-    // STEP 2: Click Events
     await clickByText(page, 'Events');
     await humanDelay(page, 800, 1500);
     await page.waitForTimeout(1000);
 
-    // STEP 3-4: Scroll and click Access Protocol
     await page.evaluate(() => window.scrollBy(0, 600));
     await page.waitForTimeout(800);
 
@@ -260,7 +209,6 @@ async function runRegistration(browser, regIndex, totalCount) {
     await accessBtns.nth(btnIdx).click();
     await humanDelay(page, 800, 1500);
 
-    // STEP 5: Read Protocol
     await page.waitForTimeout(1000);
     await scrollModalGradually(page);
     await humanDelay(page, 300, 600);
@@ -272,7 +220,6 @@ async function runRegistration(browser, regIndex, totalCount) {
     }
     await humanDelay(page, 800, 1500);
 
-    // STEP 6-7: Scroll + Confirm Registry
     await scrollModalGradually(page);
     await scrollModalToBottom(page);
     await humanDelay(page, 500, 1000);
@@ -300,7 +247,6 @@ async function runRegistration(browser, regIndex, totalCount) {
     if (!confirmed) throw new Error('Could not click Confirm Registry');
     await humanDelay(page, 800, 1500);
 
-    // STEP 8: Fill form
     await page.waitForTimeout(1500);
     await fillByPlaceholder(page, 'Name', regData.fullName);
     await humanDelay(page, 200, 500);
@@ -315,7 +261,6 @@ async function runRegistration(browser, regIndex, totalCount) {
     await fillByPlaceholder(page, 'CSE', regData.branch);
     await humanDelay(page, 200, 500);
 
-    // STEP 9: Continue to Payment
     await scrollModalToBottom(page);
     await page.waitForTimeout(400);
     try { await clickByText(page, 'CONTINUE TO PAYMENT'); } catch {
@@ -326,11 +271,10 @@ async function runRegistration(browser, regIndex, totalCount) {
     }
     await humanDelay(page, 1500, 2500);
 
-    // STEP 10: Dynamically Scrape Payment Amount from Screen
-    let scrapedAmount = '₹299'; // Default fallback
+    let scrapedAmount = '₹299';
     try {
       const pageText = await page.innerText('body');
-      // Look for Rupees symbol followed by digits, or digits followed by INR/rupees
+
       const amountMatch = pageText.match(/(?:₹|Rs\.?|INR)\s*(\d+)/i) || pageText.match(/(\d+)\s*(?:INR|rupees)/i);
       if (amountMatch) {
         scrapedAmount = `₹${amountMatch[1]}`;
@@ -342,7 +286,6 @@ async function runRegistration(browser, regIndex, totalCount) {
       log(`${tag} [PAYMENT] Error scraping amount: ${scErr.message}, defaulting to ${scrapedAmount}`);
     }
 
-    // STEP 11: Generate receipt with scraped amount & random template
     const receiptPath = await generatePaymentReceipt({
       amount: scrapedAmount,
       utr: regData.utr,
@@ -352,18 +295,15 @@ async function runRegistration(browser, regIndex, totalCount) {
       phone: regData.phone,
     });
 
-    // STEP 11: Upload receipt
     await page.waitForTimeout(1000);
     const fileInput = page.locator('input[type="file"]').first();
     await fileInput.waitFor({ state: 'attached', timeout: 10000 });
     await fileInput.setInputFiles(receiptPath);
     await humanDelay(page, 800, 1500);
 
-    // STEP 12: Enter UTR
     await fillByPlaceholder(page, 'UTR', regData.utr);
     await humanDelay(page, 300, 600);
 
-    // STEP 13: Submit
     try { await clickByText(page, 'COMPLETE REGISTRY'); } catch {
       await page.evaluate(() => {
         const b = [...document.querySelectorAll('button,a,div')].find((e) => e.textContent.toUpperCase().includes('COMPLETE'));
@@ -372,7 +312,6 @@ async function runRegistration(browser, regIndex, totalCount) {
     }
     await page.waitForTimeout(3000);
 
-    // STEP 14: Capture confirmation
     await snap(page, `ok_${regIndex}`);
 
     let referenceNumber = '';
@@ -404,16 +343,6 @@ async function runRegistration(browser, regIndex, totalCount) {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  PARALLEL WORKER POOL
-// ══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Run tasks with a concurrency limit (worker pool pattern)
- * @param {number} total - Total number of tasks
- * @param {number} concurrency - Max parallel tasks
- * @param {(index: number) => Promise<void>} taskFn - Task function
- */
 async function runPool(total, concurrency, taskFn) {
   let nextIndex = 0;
   let completed = 0;
@@ -432,7 +361,6 @@ async function runPool(total, concurrency, taskFn) {
       completed++;
       log(`[POOL] Progress: ${completed}/${total} completed`);
 
-      // Rotate this worker's Tor circuit for next registration
       if (PROXY_MODE === 'tor') {
         rotateWorkerIP(index);
         await new Promise((r) => setTimeout(r, 1500));
@@ -440,7 +368,6 @@ async function runPool(total, concurrency, taskFn) {
     }
   }
 
-  // Launch workers
   const workers = [];
   const actualConcurrency = Math.min(concurrency, total);
   for (let i = 0; i < actualConcurrency; i++) {
@@ -450,10 +377,6 @@ async function runPool(total, concurrency, taskFn) {
   await Promise.all(workers);
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  ENTRY POINT
-// ══════════════════════════════════════════════════════════════════════════════
-
 (async () => {
   log(`\n${'═'.repeat(60)}`);
   log(`ESTRALIS BOT — ${COUNT} registrations | ${PARALLEL} parallel | Proxy: ${PROXY_MODE} | Headless: ${HEADLESS}`);
@@ -461,7 +384,6 @@ async function runPool(total, concurrency, taskFn) {
 
   ensureCsvFile();
 
-  // ── Setup proxy / Tor instances ──────────────────────────────────────────
   if (PROXY_MODE === 'tor') {
     const workerCount = Math.min(PARALLEL, COUNT);
     log(`[TOR] Spawning ${workerCount} isolated Tor instances (1 per worker = 1 unique IP each)...`);
@@ -480,7 +402,6 @@ async function runPool(total, concurrency, taskFn) {
 
   const startTime = Date.now();
 
-  // Handle cleanup on exit
   const cleanup = async () => {
     if (torCleanup) torCleanup();
     await browser.close();
