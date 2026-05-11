@@ -29,3 +29,5 @@ yarn-error.log*
 .pnpm-debug.log*
 USER_GUIDE.md
 README.md
+.aider.*
+index.js.full
