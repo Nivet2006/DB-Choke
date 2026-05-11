@@ -1,4 +1,3 @@
-
 const fs = require('fs');
 const path = require('path');
 const { fakerEN_IN } = require('@faker-js/faker');
@@ -144,12 +143,10 @@ function getRandomSemester() {
 }
 
 function getUniqueUtr() {
-  const bankCodes = ['SBIN', 'HDFC', 'ICIC', 'UTIB', 'KKBK', 'IOBA', 'BARB', 'PUNB'];
   let utr;
   let attempts = 0;
 
   do {
-
     utr = randomDigits(12);
     attempts++;
   } while (usedUtrs.has(utr) && attempts < 100);
@@ -192,10 +189,32 @@ function generateRegistrationData() {
   };
 }
 
-async function humanDelay(page, minMs = 0, maxMs = 0) {}
+async function humanDelay(page, minMs = 50, maxMs = 250) {
+  if (minMs === 0 && maxMs === 0) return;
+
+  const ms =
+    Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+
+  if (page) {
+    await page.waitForTimeout(ms);
+  } else {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+}
 
 async function humanType(page, selector, text) {
-  await page.fill(selector, text);
+  const el = page.locator(selector).first();
+
+  await el.waitFor({
+    state: 'visible',
+    timeout: 5000,
+  });
+
+  await el.click();
+
+  await el.pressSequentially(text, {
+    delay: randomInt(50, 150),
+  });
 }
 
 module.exports = {
