@@ -1,6 +1,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { fakerEN_IN } = require('@faker-js/faker');
 
 const NAMES_FILE = path.join(__dirname, '..', 'NAMES.TXT');
 const COLLEGES_FILE = path.join(__dirname, '..', 'COLLEGES.TXT');
@@ -86,14 +87,18 @@ function randomDigits(length) {
 }
 
 function getRandomName() {
-  const firstName = pickRandom(names);
-  const lastNames = [
-    'Sharma', 'Verma', 'Gupta', 'Singh', 'Kumar',
-    'Patel', 'Reddy', 'Nair', 'Joshi', 'Rao',
-    'Mehta', 'Shah', 'Iyer', 'Menon', 'Pillai',
-    'Hegde', 'Naik', 'Shetty', 'Gowda', 'Bhat',
-  ];
-  return `${firstName} ${pickRandom(lastNames)}`;
+  try {
+    return fakerEN_IN.person.fullName();
+  } catch (err) {
+    const firstName = pickRandom(names);
+    const lastNames = [
+      'Sharma', 'Verma', 'Gupta', 'Singh', 'Kumar',
+      'Patel', 'Reddy', 'Nair', 'Joshi', 'Rao',
+      'Mehta', 'Shah', 'Iyer', 'Menon', 'Pillai',
+      'Hegde', 'Naik', 'Shetty', 'Gowda', 'Bhat',
+    ];
+    return `${firstName} ${pickRandom(lastNames)}`;
+  }
 }
 
 function getUniqueEmail(fullName) {

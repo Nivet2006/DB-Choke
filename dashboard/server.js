@@ -7,6 +7,7 @@ const PORT = parseInt(process.argv[2], 10) || 4000;
 const CSV_PATH = path.join(__dirname, '..', 'output.csv');
 const NAMES_PATH = path.join(__dirname, '..', 'NAMES.TXT');
 const LOG_DIR = path.join(__dirname, '..', 'logs');
+const FLAG_PATH = path.join(__dirname, '..', 'logs', 'infinite_mode.flag');
 
 function parseCSV() {
   if (!fs.existsSync(CSV_PATH)) return { headers: [], rows: [], raw: '' };
@@ -25,6 +26,7 @@ function parseCSV() {
 }
 
 function getTotalTarget() {
+  if (fs.existsSync(FLAG_PATH)) return 999999; // Represents infinity in dashboard
   if (!fs.existsSync(NAMES_PATH)) return 0;
   return fs.readFileSync(NAMES_PATH, 'utf-8').split('\n').filter(l => l.trim()).length;
 }
@@ -798,15 +800,16 @@ function buildDashboard() {
       const data = await res.json();
       allRows = data.rows;
 
-      document.getElementById('stat-total').innerText = data.total;
+      const isInfinite = data.total === 999999;
+      document.getElementById('stat-total').innerText = isInfinite ? '∞' : data.total;
       document.getElementById('stat-success').innerText = data.success;
       document.getElementById('stat-failed').innerText = data.failed;
       document.getElementById('stat-completed').innerText = data.completed;
-      document.getElementById('stat-remaining').innerText = Math.max(0, data.total - data.completed);
+      document.getElementById('stat-remaining').innerText = isInfinite ? '∞' : Math.max(0, data.total - data.completed);
 
-      const pct = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
-      document.getElementById('progress-pct').innerText = pct + '% (' + data.completed + '/' + data.total + ')';
-      document.getElementById('progress-fill').style.width = Math.min(pct, 100) + '%';
+      const pct = data.total > 0 ? (isInfinite ? Math.round((data.completed % 100)) : Math.round((data.completed / data.total) * 100)) : 0;
+      document.getElementById('progress-pct').innerText = isInfinite ? (data.completed + ' registrations') : (pct + '% (' + data.completed + '/' + data.total + ')');
+      document.getElementById('progress-fill').style.width = isInfinite ? (pct + '%') : (Math.min(pct, 100) + '%');
 
       ratioChart.data.datasets[0].data = [data.success, data.failed];
       ratioChart.update();

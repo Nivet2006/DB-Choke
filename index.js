@@ -28,6 +28,7 @@ const COUNT = cliCount
 const PARALLEL = parseInt(getArg('--parallel') || getArg('-p'), 10) || 1;
 const PROXY_MODE = getArg('--proxy') || 'none';
 const HEADLESS = hasFlag('--headful') ? false : process.env.HEADLESS !== 'false';
+const IS_INFINITE = hasFlag('--infinite') || hasFlag('--infinity');
 
 const DIRS = ['uploads', 'logs', 'generated_receipts', 'screenshots', 'logos'];
 for (const dir of DIRS) {
@@ -417,23 +418,39 @@ async function runEventRegistrations(browser, eventIndex, targetCount) {
   process.on('SIGINT', async () => { await cleanup(); process.exit(0); });
   process.on('SIGTERM', async () => { await cleanup(); process.exit(0); });
 
+  const FLAG_PATH = path.join(__dirname, 'logs', 'infinite_mode.flag');
+  if (IS_INFINITE) {
+    fs.writeFileSync(FLAG_PATH, 'true');
+  } else {
+    try { if (fs.existsSync(FLAG_PATH)) fs.unlinkSync(FLAG_PATH); } catch (e) {}
+  }
+
   try {
     const rounds = [600, 300];
-    for (let r = 0; r < rounds.length; r++) {
-      const batchSize = rounds[r];
-      log(`[SCHEDULER] Starting Round ${r + 1} with ${batchSize} registrations per event`);
+    let loopCount = 0;
+    while (true) {
+      loopCount++;
+      if (IS_INFINITE) {
+        log(`\n[SCHEDULER] ♾️ INFINITE LOOP RUNNING — BATCH ROUND ${loopCount}`);
+      }
+      for (let r = 0; r < (IS_INFINITE ? 1 : rounds.length); r++) {
+        const batchSize = IS_INFINITE ? 99999 : rounds[r];
+        log(`[SCHEDULER] Starting Round ${IS_INFINITE ? loopCount : r + 1} with ${batchSize} registrations per event`);
 
-      for (let eventIndex = 0; eventIndex < 5; eventIndex++) {
-        log(`[SCHEDULER] Event ${eventIndex + 1}/5 | Target batch: ${batchSize}`);
-        await runEventRegistrations(browser, eventIndex, batchSize);
+        for (let eventIndex = 0; eventIndex < 5; eventIndex++) {
+          log(`[SCHEDULER] Event ${eventIndex + 1}/5 | Target batch: ${batchSize}`);
+          await runEventRegistrations(browser, eventIndex, batchSize);
 
-        if (eventIndex < 4 || r < rounds.length - 1) {
-          log(`[SCHEDULER] Waiting 2 minutes before starting the next set of events...`);
-          await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
+          if (eventIndex < 4 || r < rounds.length - 1 || IS_INFINITE) {
+            log(`[SCHEDULER] Waiting 30 seconds before starting the next set of events...`);
+            await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
+          }
         }
       }
+      if (!IS_INFINITE) break;
     }
   } finally {
+    try { if (fs.existsSync(FLAG_PATH)) fs.unlinkSync(FLAG_PATH); } catch (e) {}
     await cleanup();
   }
 

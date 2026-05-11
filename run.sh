@@ -126,6 +126,7 @@ check_tor() {
 show_menu() {
   echo -e "${BOLD}─── RUN OPTIONS ─── (${YELLOW}all names in NAMES.TXT${NC}${BOLD}) ──${NC}"
   echo -e "  ${CYAN}1)${NC}  Run ALL names + Tor (parallel)     ${GREEN}(RECOMMENDED)${NC}"
+  echo -e "  ${CYAN}14)${NC} Run INFINITE Loop + Tor (faker names) ${MAGENTA}(INFINITY ♾️)${NC}"
   echo -e "  ${CYAN}2)${NC}  Run custom count (parallel, no proxy)"
   echo -e "  ${CYAN}3)${NC}  Run with proxy list (proxies.txt)"
   echo -e "  ${CYAN}4)${NC}  Run sequential (single thread)"
@@ -243,8 +244,14 @@ while true; do
       echo -n "Parallel workers? [10]: "; read -r workers
       workers=${workers:-10}
 
+      echo -n "Run infinitely (Faker names)? (y/n) [n]: "; read -r inf_choice
+      local extra_args=""
+      if [[ "$inf_choice" == "y" || "$inf_choice" == "Y" ]]; then
+        extra_args="--infinite"
+      fi
+
       log_step "Bot starting... Dashboard is live. Watch the tunnel URL above."
-      node "$SCRIPT_DIR/index.js" --parallel "$workers" --proxy tor
+      node "$SCRIPT_DIR/index.js" --parallel "$workers" --proxy tor $extra_args
 
       kill $DASH_PID $CF_PID 2>/dev/null
       log_step "Bot finished. Dashboard + Tunnel stopped."
@@ -277,6 +284,21 @@ while true; do
       pkill -f "node.*server.js" 2>/dev/null || true
       pkill -f cloudflared 2>/dev/null || true
       log_step "All processes stopped"
+      ;;
+    14)
+      echo -n "Parallel workers? [10]: "; read -r workers
+      workers=${workers:-10}
+      if ! pgrep -x tor >/dev/null 2>&1 && ! tasklist.exe 2>/dev/null | grep -i "tor.exe" >/dev/null 2>&1; then
+        log_warn "Starting Tor..."
+        if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+          start tor 2>/dev/null || tor &
+        else
+          sudo systemctl start tor 2>/dev/null || sudo tor &
+        fi
+        sleep 3
+      fi
+      log_step "Running INFINITE Loop, $workers parallel, Tor IP rotation (Faker names)..."
+      node "$SCRIPT_DIR/index.js" --parallel "$workers" --proxy tor --infinite
       ;;
     0) echo -e "${GREEN}Bye!${NC}"; exit 0 ;;
     *) log_err "Invalid choice" ;;
