@@ -40,7 +40,7 @@ install_node() {
 install_system_deps() {
   log_step "Installing system dependencies..."
   local asound_pkg="libasound2"
-  if ! apt-cache show libasound2 &>/dev/null; then
+  if apt-cache show libasound2t64 &>/dev/null; then
     asound_pkg="libasound2t64"
   fi
   sudo apt install -y \
