@@ -57,8 +57,13 @@ async function compressImage(inputPath, outputPath) {
     }
   }
 
-  fs.writeFileSync(targetPath, buffer);
-  console.log(`[COMPRESS] Final size: ${(buffer.length / 1024).toFixed(1)} KB`);
+  if (buffer) {
+    fs.writeFileSync(targetPath, buffer);
+    console.log(`[COMPRESS] Final size: ${(buffer.length / 1024).toFixed(1)} KB`);
+  } else {
+    console.log(`[COMPRESS] Could not compress below 1 MB — copying original`);
+    if (outputPath && outputPath !== inputPath) fs.copyFileSync(inputPath, outputPath);
+  }
   return targetPath;
 }
 
@@ -101,8 +106,13 @@ async function compressBuffer(pngBuffer, outputPath) {
     width = Math.floor(width * 0.75);
   }
 
-  fs.writeFileSync(outputPath, buffer);
-  console.log(`[COMPRESS] Final buffer size: ${(buffer.length / 1024).toFixed(1)} KB`);
+  if (buffer) {
+    fs.writeFileSync(outputPath, buffer);
+    console.log(`[COMPRESS] Final buffer size: ${(buffer.length / 1024).toFixed(1)} KB`);
+  } else {
+    console.log(`[COMPRESS] Could not compress buffer below 1 MB — saving as-is`);
+    fs.writeFileSync(outputPath, pngBuffer);
+  }
   return outputPath;
 }
 

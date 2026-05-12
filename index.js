@@ -2,7 +2,7 @@ const { chromium } = require('@playwright/test');
 const path = require('path');
 const fs = require('fs');
 
-const { generateRegistrationData, humanDelay, randomInt, loadDedup, saveDedup } = require('./utils/randomData');
+const { generateRegistrationData, randomInt, loadDedup, saveDedup } = require('./utils/randomData');
 const { generatePaymentReceipt } = require('./utils/paymentGenerator');
 const { appendRecord, ensureCsvFile } = require('./utils/csv');
 
@@ -60,16 +60,14 @@ async function snap(page, name) {
   return file;
 }
 
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
 async function fillField(page, placeholder, value, label) {
   log(`  → ${label}: ${value}`);
   const input = page.locator(`input[placeholder*="${placeholder}" i], textarea[placeholder*="${placeholder}" i]`).first();
   await input.waitFor({ state: 'visible', timeout: 8000 });
   await input.fill(value);
-  await page.waitForTimeout(randomInt(MIN_DELAY, MAX_DELAY));
-}
-
-function pickRandom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+  await wait(randomInt(MIN_DELAY, MAX_DELAY));
 }
 
 async function runRegistration(browser, regIndex, totalCount) {
@@ -110,7 +108,7 @@ async function runRegistration(browser, regIndex, totalCount) {
 
     log(`${tag} 🌐 Loading site...`);
     await page.goto(BASE_URL + '#events', { waitUntil: 'networkidle', timeout: 60000 });
-    await page.waitForTimeout(2000);
+    await wait(2000);
     log(`${tag} ✅ Page loaded`);
 
     const skipEvents = ['DJ NIGHT', 'BATTLE OF BANDS', 'CLASSICAL GROUP', 'WESTERN GROUP', 'BGMI', 'FASHION', 'TREASURE HUNT'];
@@ -129,7 +127,7 @@ async function runRegistration(browser, regIndex, totalCount) {
           const c = document.querySelector('.fixed.inset-0');
           if (c) c.querySelector('button')?.click();
         });
-        await page.waitForTimeout(500);
+        await wait(500);
       }
 
       const cards = page.locator('text=Access Protocol');
@@ -172,9 +170,9 @@ async function runRegistration(browser, regIndex, totalCount) {
       } catch {}
 
       await card.scrollIntoViewIfNeeded();
-      await page.waitForTimeout(300);
+      await wait(300);
       await card.click({ force: true, noWaitAfter: true });
-      await page.waitForTimeout(2000);
+      await wait(2000);
 
       modal = page.locator('.fixed.inset-0').filter({ has: page.locator('text=Read Protocol') }).first();
       await modal.waitFor({ state: 'attached', timeout: 10000 });
@@ -196,7 +194,7 @@ async function runRegistration(browser, regIndex, totalCount) {
           }
         }
       });
-      await page.waitForTimeout(80);
+      await wait(80);
     }
     log(`${tag} ✅ Scrolled modal`);
 
@@ -214,7 +212,7 @@ async function runRegistration(browser, regIndex, totalCount) {
         if (btn) btn.click();
       });
     }
-    await page.waitForTimeout(2000);
+    await wait(2000);
 
     const afterUrl = page.url();
     const afterTitle = await page.title();
@@ -243,7 +241,7 @@ async function runRegistration(browser, regIndex, totalCount) {
         }
         window.scrollBy(0, 300);
       });
-      await page.waitForTimeout(150);
+      await wait(150);
 
       const m = [...(await page.locator('.fixed.inset-0').count() > 0 ? [page.locator('.fixed.inset-0').first()] : [])];
       const btn = page.locator('button', { hasText: 'Confirm Registry' }).first();
@@ -280,7 +278,7 @@ async function runRegistration(browser, regIndex, totalCount) {
       throw new Error('Confirm Registry not found anywhere');
     }
     log(`${tag} ✅ "Confirm Registry" clicked`);
-    await page.waitForTimeout(1000);
+    await wait(1000);
 
     log(`${tag} 📝 Filling form fields...`);
     const visInputs = await page.evaluate(() =>
@@ -312,14 +310,14 @@ async function runRegistration(browser, regIndex, totalCount) {
     try {
       await page.locator('button', { hasText: 'CONTINUE TO PAYMENT' }).first().click({ timeout: 5000, noWaitAfter: true });
     } catch {}
-    await page.waitForTimeout(1500);
+    await wait(1500);
 
     log(`${tag} 📤 Submitting form...`);
     await page.evaluate(() => {
       const form = document.querySelector('form');
       if (form) form.requestSubmit();
     });
-    await page.waitForTimeout(3000);
+    await wait(3000);
 
     if (apiCalls.length > 0) {
       for (const c of apiCalls) log(`${tag}   API: ${c.url} → ${c.status}`);
@@ -349,7 +347,7 @@ async function runRegistration(browser, regIndex, totalCount) {
       });
 
       await page.locator('input[type="file"]').first().setInputFiles(receiptPath);
-      await page.waitForTimeout(400);
+      await wait(400);
       log(`${tag} ✅ Receipt uploaded`);
 
       const utrInp = page.locator('input[placeholder*="UTR" i]').first();
@@ -365,7 +363,7 @@ async function runRegistration(browser, regIndex, totalCount) {
           if (b) b.click();
         });
       }
-      await page.waitForTimeout(3000);
+      await wait(3000);
       await snap(page, `submitted_${regIndex}`);
 
       const finalText = await page.locator('body').innerText();
@@ -467,7 +465,7 @@ async function runPool(total, concurrency, fn) {
     });
     const page = await browser.newPage();
     await page.goto(BASE_URL + '#events', { waitUntil: 'networkidle', timeout: 30000 });
-    await page.waitForTimeout(3000);
+    await wait(3000);
     const cards = page.locator('text=Access Protocol');
     const count = await cards.count();
     const names = [];

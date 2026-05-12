@@ -61,379 +61,413 @@ function buildDashboard() {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DATABASE CHOCKE ft. SNAKEKING</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DB-CHOCK · DASHBOARD</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #000000;
+    --surface: #0a0a0a;
+    --border: #1a1a1a;
+    --border-light: #222;
+    --text: #f0f0f0;
+    --text-dim: #555;
+    --text-muted: #444;
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.1);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.1);
+    --yellow: #eab308;
+    --yellow-bg: rgba(234,179,8,0.1);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  html { font-size: 16px; }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #0d1117;
-    color: #e6edf3;
+    background: var(--bg);
+    color: var(--text);
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #333; }
+
   .header {
-    border-bottom: 1px solid #30363d;
-    padding: 16px 32px;
+    position: sticky; top: 0; z-index: 100;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #161b22;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
   }
   .brand h1 {
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-    color: #e6edf3;
+    font-size: 14px; font-weight: 700;
+    letter-spacing: -0.2px; color: var(--text);
   }
   .brand span {
-    font-size: 11px;
-    color: #8b949e;
-    font-weight: 500;
-    margin-left: 8px;
+    font-size: 10px; color: var(--text-dim);
+    font-weight: 500; padding: 2px 8px;
+    border: 1px solid var(--border); border-radius: 4px;
+    letter-spacing: 0.3px;
   }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+  .last-updated {
+    font-size: 10px; color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    display: none;
+  }
+  @media (min-width: 600px) { .last-updated { display: block; } }
   .kill-btn {
-    background: #21262d;
-    color: #f85149;
-    border: 1px solid #30363d;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
+    background: transparent; color: var(--red);
+    border: 1px solid rgba(239,68,68,0.3);
+    padding: 6px 16px; border-radius: var(--radius-sm);
+    font-weight: 600; font-size: 11px; cursor: pointer;
+    transition: all 0.2s; font-family: inherit;
+    letter-spacing: 0.3px;
   }
   .kill-btn:hover {
-    background: #f85149;
-    color: #fff;
-    border-color: #f85149;
+    background: var(--red-bg);
+    border-color: var(--red);
   }
-  .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+
+  .container { max-width: 1280px; margin: 0 auto; padding: 16px; }
+  @media (min-width: 640px) { .container { padding: 20px 24px; } }
+
   .stats-row {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
   }
+  @media (min-width: 480px) { .stats-row { grid-template-columns: repeat(5, 1fr); } }
+  @media (min-width: 768px) { .stats-row { gap: 10px; } }
   .stat {
-    flex: 1;
-    min-width: 120px;
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 10px;
-    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    transition: border-color 0.2s;
   }
+  .stat:hover { border-color: var(--border-light); }
   .stat-label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: #8b949e;
-    font-weight: 600;
-    margin-bottom: 4px;
+    font-size: 9px; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text-dim);
+    font-weight: 600; margin-bottom: 4px;
   }
   .stat-val {
-    font-size: 28px;
-    font-weight: 700;
-    color: #e6edf3;
-    letter-spacing: -0.5px;
+    font-size: 22px; font-weight: 700;
+    letter-spacing: -0.4px; color: var(--text);
+    font-variant-numeric: tabular-nums;
   }
-  .stat-val.green { color: #3fb950; }
-  .stat-val.red { color: #f85149; }
-  .stat-val.gray { color: #8b949e; }
+  @media (min-width: 768px) { .stat-val { font-size: 26px; } }
+  .stat-val.green { color: var(--green); }
+  .stat-val.red { color: var(--red); }
+  .stat-val.dim { color: var(--text-dim); }
+
   .progress-wrap {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 10px;
-    padding: 16px 20px;
-    margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 16px;
   }
   .progress-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 8px;
   }
   .progress-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: #8b949e;
-    text-transform: uppercase;
+    font-size: 10px; font-weight: 600;
+    color: var(--text-dim); text-transform: uppercase;
     letter-spacing: 0.5px;
   }
   .progress-pct {
-    font-size: 13px;
-    font-weight: 700;
-    color: #e6edf3;
+    font-size: 12px; font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
   }
   .progress-bar-bg {
-    width: 100%;
-    height: 6px;
-    background: #21262d;
-    border-radius: 3px;
-    overflow: hidden;
+    width: 100%; height: 5px;
+    background: #111;
+    border-radius: 3px; overflow: hidden;
   }
   .progress-bar-fill {
     height: 100%;
-    background: #e6edf3;
-    border-radius: 3px;
-    width: 0%;
-    transition: width 0.4s ease;
+    background: linear-gradient(90deg, var(--green), #4ade80);
+    border-radius: 3px; width: 0%;
+    transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
-  .main-grid {
+
+  .grid-2 {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 24px;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
   }
-  @media (max-width: 900px) {
-    .main-grid { grid-template-columns: 1fr; }
-  }
+  @media (min-width: 1000px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
   .card {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 10px;
-    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
     display: flex;
     flex-direction: column;
   }
-  .card h3 {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: #8b949e;
-    font-weight: 600;
-    margin-bottom: 16px;
+  .card-header {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 12px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #21262d;
+    border-bottom: 1px solid var(--border);
   }
+  .card-header h3 {
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text-dim);
+    font-weight: 600;
+  }
+  .card-header .count-badge {
+    font-size: 10px; color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
   .search-input {
     width: 100%;
-    background: #0d1117;
-    border: 1px solid #30363d;
-    border-radius: 6px;
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
     padding: 8px 12px;
-    font-size: 13px;
-    font-family: inherit;
-    color: #e6edf3;
-    margin-bottom: 12px;
-    outline: none;
+    font-size: 12px; font-family: inherit;
+    color: var(--text); outline: none;
+    margin-bottom: 10px;
+    transition: border-color 0.2s;
   }
-  .search-input:focus { border-color: #8b949e; }
+  .search-input:focus { border-color: #333; }
+  .search-input::placeholder { color: var(--text-muted); }
+
   .filter-row {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
+    display: flex; gap: 4px;
+    margin-bottom: 10px; flex-wrap: wrap;
   }
   .filter-btn {
-    background: #21262d;
-    border: 1px solid #30363d;
-    color: #8b949e;
-    padding: 5px 14px;
-    border-radius: 6px;
-    font-weight: 500;
-    font-size: 11px;
-    cursor: pointer;
-    transition: all 0.1s;
-    font-family: inherit;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    font-weight: 500; font-size: 10px;
+    cursor: pointer; transition: all 0.15s;
+    font-family: inherit; letter-spacing: 0.2px;
   }
-  .filter-btn:hover { border-color: #8b949e; color: #e6edf3; }
+  .filter-btn:hover { border-color: #333; color: var(--text); }
   .filter-btn.active {
-    background: #e6edf3;
-    border-color: #e6edf3;
-    color: #0d1117;
+    background: #fff;
+    border-color: #fff;
+    color: #000;
   }
-  .table-wrap { overflow-x: auto; max-height: 500px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+
+  .table-wrap {
+    overflow-x: auto;
+    max-height: 460px;
+    scrollbar-width: thin;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
   th {
-    text-align: left;
-    padding: 10px 12px;
-    color: #8b949e;
-    font-weight: 600;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid #30363d;
-    position: sticky;
-    top: 0;
-    background: #161b22;
+    text-align: left; padding: 8px 10px;
+    color: var(--text-dim); font-weight: 600;
+    font-size: 9px; text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: var(--surface);
   }
   td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #21262d;
-    color: #e6edf3;
-    max-width: 140px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  tr:hover td { background: #1c2333; }
+  tr:hover td { background: rgba(255,255,255,0.03); }
   .badge {
     display: inline-block;
-    padding: 2px 10px;
-    border-radius: 4px;
+    padding: 2px 8px;
+    border-radius: 3px;
     font-weight: 600;
-    font-size: 10px;
+    font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
   }
-  .badge.success { background: #1b3a1b; color: #3fb950; }
-  .badge.failure { background: #3a1b1b; color: #f85149; }
+  .badge.success { background: var(--green-bg); color: var(--green); }
+  .badge.failure { background: var(--red-bg); color: var(--red); }
   .badge.ongoing {
-    background: #3d2e00;
-    color: #d29922;
-    animation: blink 1s infinite;
+    background: var(--yellow-bg);
+    color: var(--yellow);
   }
+  .blink { animation: blink 1s ease-in-out infinite; }
   @keyframes blink {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.35; }
+    50% { opacity: 0.3; }
   }
-  @keyframes flashHighlight {
-    0% { background: rgba(63, 185, 80, 0.25); }
+  @keyframes flash {
+    0% { background: rgba(34,197,94,0.15); }
     100% { background: transparent; }
   }
+  .row-flash { animation: flash 1s ease-out; }
+
   .log-box {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    line-height: 1.5;
-    color: #e6edf3;
-    background: #0d1117;
-    border: 1px solid #21262d;
-    border-radius: 6px;
-    padding: 12px;
+    font-size: 10px; line-height: 1.6;
+    color: var(--text);
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px;
     overflow-y: auto;
     flex: 1;
-    min-height: 400px;
-    max-height: 600px;
+    min-height: 300px;
+    max-height: 500px;
     white-space: pre-wrap;
     word-break: break-all;
   }
   .log-search {
     width: 100%;
-    background: #0d1117;
-    border: 1px solid #30363d;
-    border-radius: 6px;
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
     padding: 8px 12px;
-    font-size: 12px;
+    font-size: 11px;
     font-family: 'JetBrains Mono', monospace;
-    color: #e6edf3;
-    margin-bottom: 12px;
-    outline: none;
+    color: var(--text); outline: none;
+    margin-bottom: 10px;
+    transition: border-color 0.2s;
   }
-  .log-search:focus { border-color: #8b949e; }
+  .log-search:focus { border-color: #333; }
+
   .footer {
     text-align: center;
-    padding: 24px;
-    color: #484f58;
-    font-size: 11px;
-    border-top: 1px solid #21262d;
-    margin-top: 24px;
+    padding: 20px;
+    color: var(--text-muted);
+    font-size: 10px;
     letter-spacing: 0.3px;
   }
+
   .modal-overlay {
     position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8);
+    inset: 0;
+    background: rgba(0,0,0,0.85);
     display: none;
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
   }
   .modal-overlay.active { display: flex; }
   .modal {
-    background: #161b22;
-    border: 1px solid #30363d;
+    background: #0a0a0a;
+    border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 32px;
-    max-width: 380px;
+    padding: 28px;
+    max-width: 340px;
     width: 90%;
     text-align: center;
   }
   .modal h2 {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 6px;
-    color: #e6edf3;
+    font-size: 15px; font-weight: 700;
+    margin-bottom: 6px; color: var(--text);
+    letter-spacing: -0.2px;
   }
   .modal p {
-    color: #8b949e;
-    font-size: 13px;
-    margin-bottom: 20px;
-    line-height: 1.4;
+    color: var(--text-dim);
+    font-size: 12px; margin-bottom: 20px;
+    line-height: 1.5;
   }
   .modal-input {
     width: 100%;
-    background: #0d1117;
-    border: 1px solid #30363d;
+    background: #000;
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 10px 14px;
-    font-size: 14px;
-    text-align: center;
-    letter-spacing: 4px;
-    margin-bottom: 16px;
+    font-size: 13px; text-align: center;
+    letter-spacing: 4px; margin-bottom: 16px;
     font-family: 'JetBrains Mono', monospace;
-    outline: none;
-    color: #e6edf3;
+    outline: none; color: var(--text);
   }
-  .modal-input:focus { border-color: #f85149; }
-  .modal-actions { display: flex; gap: 10px; }
+  .modal-input:focus { border-color: var(--red); }
+  .modal-actions { display: flex; gap: 8px; }
   .modal-btn {
-    flex: 1;
-    padding: 10px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.1s;
-    font-family: inherit;
+    flex: 1; padding: 10px;
+    border-radius: 8px; font-weight: 600;
+    font-size: 11px; cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
   }
   .modal-btn.cancel {
-    background: #21262d;
-    border: 1px solid #30363d;
-    color: #8b949e;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
   }
-  .modal-btn.cancel:hover { background: #30363d; }
-  .modal-btn.confirm {
-    background: #f85149;
-    border: none;
+  .modal-btn.cancel:hover { border-color: #333; color: var(--text); }
+  .modal-btn.kill {
+    background: var(--red); border: none;
     color: #fff;
   }
-  .modal-btn.confirm:hover { background: #da3633; }
+  .modal-btn.kill:hover { background: #dc2626; }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #0a0a0a; border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 16px;
+    font-size: 11px; color: var(--text);
+    transform: translateY(100px); opacity: 0;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 999;
+    max-width: 300px;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
 </style>
 </head>
 <body>
 <div class="header">
   <div class="brand">
-    <h1>DATABASE CHOCKE ft. SNAKEKING</h1>
+    <div class="brand-dot"></div>
+    <h1>DB-CHOCK</h1>
     <span>LIVE</span>
   </div>
-  <button class="kill-btn" onclick="openKillModal()">KILL</button>
+  <div class="header-actions">
+    <span class="last-updated" id="last-updated">--</span>
+    <button class="kill-btn" onclick="openKillModal()">✕ KILL</button>
+  </div>
 </div>
 
 <div class="container">
   <div class="stats-row">
-    <div class="stat">
-      <div class="stat-label">Target</div>
-      <div class="stat-val" id="stat-total">0</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Success</div>
-      <div class="stat-val green" id="stat-success">0</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Failed</div>
-      <div class="stat-val red" id="stat-failed">0</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Completed</div>
-      <div class="stat-val" id="stat-completed">0</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Remaining</div>
-      <div class="stat-val gray" id="stat-remaining">0</div>
-    </div>
+    <div class="stat"><div class="stat-label">Target</div><div class="stat-val dim" id="stat-total">0</div></div>
+    <div class="stat"><div class="stat-label">Success</div><div class="stat-val green" id="stat-success">0</div></div>
+    <div class="stat"><div class="stat-label">Failed</div><div class="stat-val red" id="stat-failed">0</div></div>
+    <div class="stat"><div class="stat-label">Done</div><div class="stat-val" id="stat-completed">0</div></div>
+    <div class="stat"><div class="stat-label">Left</div><div class="stat-val dim" id="stat-remaining">0</div></div>
   </div>
 
   <div class="progress-wrap">
@@ -446,59 +480,80 @@ function buildDashboard() {
     </div>
   </div>
 
-  <div class="main-grid">
+  <div class="grid-2">
     <div class="card">
-      <h3>Records</h3>
-      <input type="text" class="search-input" id="table-search" placeholder="Search name, email, college, status..." oninput="filterTable()">
+      <div class="card-header">
+        <h3>Records</h3>
+        <span class="count-badge" id="records-count">0</span>
+      </div>
+      <input type="text" class="search-input" id="table-search" placeholder="Search..." oninput="filterTable()">
       <div class="filter-row">
-        <button class="filter-btn active" onclick="setFilter('ALL', this)">ALL</button>
-        <button class="filter-btn" onclick="setFilter('SUCCESS', this)">SUCCESS</button>
-        <button class="filter-btn" onclick="setFilter('FAILURE', this)">FAILURE</button>
-        <button class="filter-btn" onclick="setFilter('ONGOING', this)">ONGOING</button>
+        <button class="filter-btn active" data-f="ALL">ALL</button>
+        <button class="filter-btn" data-f="SUCCESS">OK</button>
+        <button class="filter-btn" data-f="FAILURE">FAIL</button>
+        <button class="filter-btn" data-f="ONGOING">ONGOING</button>
       </div>
       <div class="table-wrap">
         <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Event</th>
-              <th>Status</th>
-            </tr>
-          </thead>
+          <thead><tr><th>#</th><th>Name</th><th>Event</th><th>Status</th></tr></thead>
           <tbody id="records-body"></tbody>
         </table>
       </div>
     </div>
 
     <div class="card">
-      <h3>Console</h3>
-      <input type="text" class="log-search" id="log-search" placeholder="Filter..." oninput="filterLogs()">
+      <div class="card-header">
+        <h3>Console</h3>
+      </div>
+      <input type="text" class="log-search" id="log-search" placeholder="Filter logs..." oninput="filterLogs()">
       <div class="log-box" id="log-box"></div>
     </div>
   </div>
 
-  <div class="footer">DATABASE CHOCKE CONSOLE</div>
+  <div class="footer">DB-CHOCK CONSOLE · UPDATES EVERY 2s</div>
 </div>
 
 <div class="modal-overlay" id="kill-modal">
   <div class="modal">
-    <h2>TERMINATE</h2>
-    <p>Kill all active bot workers and dashboard.</p>
+    <h2>Terminate</h2>
+    <p>This will kill all active bot processes and stop the dashboard.</p>
     <input type="password" class="modal-input" id="kill-password" placeholder="password" autofocus>
     <div class="modal-actions">
       <button class="modal-btn cancel" onclick="closeKillModal()">CANCEL</button>
-      <button class="modal-btn confirm" onclick="submitKill()">KILL</button>
+      <button class="modal-btn kill" onclick="submitKill()">KILL</button>
     </div>
   </div>
 </div>
+
+<div class="toast" id="toast"></div>
 
 <script>
   let allRows = [];
   let ongoingList = [];
   let statusFilter = 'ALL';
   let activeLogText = '';
+  let prevOngoingKeys = {};
+  let prevCount = 0;
+
+  function animateVal(el, target) {
+    const curr = parseInt(el.dataset.val || '0');
+    if (curr === target) return;
+    el.dataset.val = target;
+    const diff = target - curr;
+    const steps = Math.min(Math.abs(diff), 20);
+    const step = diff / steps;
+    let c = curr;
+    const tick = () => {
+      c += step;
+      if ((step > 0 && c >= target) || (step < 0 && c <= target)) {
+        el.textContent = target;
+        return;
+      }
+      el.textContent = Math.round(c);
+      requestAnimationFrame(tick);
+    };
+    tick();
+  }
 
   async function update() {
     try {
@@ -508,15 +563,22 @@ function buildDashboard() {
       ongoingList = data.ongoing || [];
 
       const inf = data.total === 999999;
-      document.getElementById('stat-total').innerText = inf ? '∞' : data.total;
-      document.getElementById('stat-success').innerText = data.success;
-      document.getElementById('stat-failed').innerText = data.failed;
-      document.getElementById('stat-completed').innerText = data.completed;
-      document.getElementById('stat-remaining').innerText = inf ? '∞' : Math.max(0, data.total - data.completed);
+      animateVal(document.getElementById('stat-total'), inf ? 0 : data.total);
+      document.getElementById('stat-total').textContent = inf ? '∞' : data.total;
+      animateVal(document.getElementById('stat-success'), data.success);
+      animateVal(document.getElementById('stat-failed'), data.failed);
+      animateVal(document.getElementById('stat-completed'), data.completed);
+      document.getElementById('stat-remaining').textContent = inf ? '∞' : Math.max(0, data.total - data.completed);
 
-      const pct = data.total > 0 ? (inf ? 0 : Math.min(100, Math.round(data.completed / data.total * 100))) : 0;
-      document.getElementById('progress-pct').innerText = inf ? (data.completed + ' done') : (pct + '% (' + data.completed + '/' + data.total + ')');
-      document.getElementById('progress-fill').style.width = inf ? '0%' : pct + '%';
+      const pct = data.total > 0 && !inf ? Math.min(100, Math.round(data.completed / data.total * 100)) : 0;
+      document.getElementById('progress-pct').textContent = inf ? (data.completed + ' done') : (pct + '% (' + data.completed + '/' + data.total + ')');
+      document.getElementById('progress-fill').style.width = (inf ? 0 : pct) + '%';
+      document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+
+      if (data.completed > prevCount && prevCount > 0) {
+        showToast('+' + (data.completed - prevCount) + ' new registration' + (data.completed - prevCount > 1 ? 's' : ''));
+      }
+      prevCount = data.completed;
 
       filterTable();
       activeLogText = data.logTail || '';
@@ -524,14 +586,14 @@ function buildDashboard() {
     } catch(e) {}
   }
 
-  function setFilter(f, el) {
-    statusFilter = f;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    el.classList.add('active');
-    filterTable();
-  }
-
-  let prevOngoingKeys = {};
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      statusFilter = btn.dataset.f;
+      filterTable();
+    });
+  });
 
   function filterTable() {
     const q = document.getElementById('table-search').value.toLowerCase();
@@ -545,18 +607,20 @@ function buildDashboard() {
     allRows.forEach(r => {
       const key = (r['Full Name'] + '|' + r.Email).toLowerCase();
       const ts = r.Timestamp ? new Date(r.Timestamp).getTime() : 0;
-      combined.push({ _key: key, _sort: ts, _status: r.Status, _name: r['Full Name'] || '-', _email: r.Email || '-', _event: r['Event Name'] || '-', _isNew: !prevOngoingKeys[key] && prevOngoingKeys[key] !== undefined ? 1 : 0 });
+      const isNew = prevOngoingKeys[key] !== undefined && !prevOngoingKeys[key] ? true : false;
+      combined.push({ _key: key, _sort: ts, _status: r.Status, _name: r['Full Name'] || '-', _event: r['Event Name'] || '-', _isNew: isNew });
     });
     ongoingList.forEach(r => {
       const key = (r.name + '|' + r.email).toLowerCase();
       const ts = r.startedAt ? new Date(r.startedAt).getTime() : Date.now();
-      combined.push({ _key: key, _sort: ts, _status: 'ONGOING', _name: r.name || '-', _email: r.email || '-', _event: r.event || '-', _isNew: 0 });
+      combined.push({ _key: key, _sort: ts, _status: 'ONGOING', _name: r.name || '-', _event: r.event || '-', _isNew: 0 });
     });
 
     combined.sort((a, b) => b._sort - a._sort);
+    prevOngoingKeys = currentKeys;
 
     const filtered = combined.filter(r => {
-      const s = (r._name + ' ' + r._email + ' ' + r._status).toLowerCase();
+      const s = (r._name + ' ' + r._status).toLowerCase();
       if (!s.includes(q)) return false;
       if (statusFilter === 'SUCCESS') return r._status === 'SUCCESS';
       if (statusFilter === 'FAILURE') return r._status === 'FAILURE';
@@ -564,42 +628,51 @@ function buildDashboard() {
       return true;
     });
 
-    prevOngoingKeys = currentKeys;
+    document.getElementById('records-count').textContent = filtered.length;
 
     filtered.slice(0, 100).forEach((r, i) => {
       const cls = r._status === 'SUCCESS' ? 'success' : r._status === 'FAILURE' ? 'failure' : 'ongoing';
       const tr = document.createElement('tr');
-      if (r._isNew) tr.style.animation = 'flashHighlight 1s ease';
+      if (r._isNew) tr.className = 'row-flash';
+      const nameShort = r._name.length > 16 ? r._name.slice(0, 16) + '…' : r._name;
+      const evShort = r._event.length > 20 ? r._event.slice(0, 20) + '…' : r._event;
       tr.innerHTML = '<td>' + (i + 1) + '</td>' +
-        '<td>' + r._name + '</td>' +
-        '<td>' + r._email + '</td>' +
-        '<td>' + r._event.slice(0, 25) + '</td>' +
-        '<td><span class="badge ' + cls + '">' + r._status + '</span></td>';
+        '<td title="' + r._name.replace(/"/g,'&quot;') + '">' + nameShort + '</td>' +
+        '<td title="' + r._event.replace(/"/g,'&quot;') + '">' + evShort + '</td>' +
+        '<td><span class="badge ' + cls + (r._status === 'ONGOING' ? ' blink' : '') + '">' + r._status + '</span></td>';
       body.appendChild(tr);
     });
     if (!filtered.length) {
-      body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#484f58;padding:32px;font-size:13px">No records</td></tr>';
+      body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#444;padding:32px;font-size:12px">No records</td></tr>';
     }
   }
 
   function filterLogs() {
     const q = document.getElementById('log-search').value.toLowerCase();
     const box = document.getElementById('log-box');
-    const lines = activeLogText.split('\\n').filter(l => l.toLowerCase().includes(q));
-    box.textContent = lines.join('\\n');
+    const lines = activeLogText.split('\n').filter(l => l.toLowerCase().includes(q));
+    box.textContent = lines.join('\n');
     box.scrollTop = box.scrollHeight;
+  }
+
+  let toastTimer;
+
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
   }
 
   function openKillModal() {
     document.getElementById('kill-modal').classList.add('active');
     document.getElementById('kill-password').focus();
   }
-
   function closeKillModal() {
     document.getElementById('kill-modal').classList.remove('active');
     document.getElementById('kill-password').value = '';
   }
-
   async function submitKill() {
     const pwd = document.getElementById('kill-password').value;
     if (!pwd) return;
@@ -610,16 +683,17 @@ function buildDashboard() {
         body: JSON.stringify({ password: pwd })
       });
       if (res.ok) {
-        document.querySelector('.modal').innerHTML = '<h2 style="color:#090">TERMINATED</h2><p>All processes killed.</p>';
-        setTimeout(() => window.close(), 2000);
+        document.querySelector('.modal').innerHTML = '<h2 style="color:var(--green)">Terminated</h2><p style="color:var(--text-dim)">All processes have been stopped.</p>';
       } else {
         document.getElementById('kill-password').value = '';
         document.getElementById('kill-password').focus();
       }
     } catch(e) {}
   }
+  document.getElementById('kill-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitKill(); });
 
-  window.onload = () => { update(); setInterval(update, 2000); };
+  update();
+  setInterval(update, 2000);
 </script>
 </body>
 </html>`;
