@@ -712,47 +712,50 @@ function buildDashboard() {
     const text = document.getElementById('splash-text');
     if (!splash || !text) return;
 
-    const ease = { easing: 'ease' };
+    function anim(keyframes, opts) {
+      text.getAnimations().forEach(a => a.cancel());
+      return text.animate(keyframes, { fill: 'forwards', easing: 'ease', ...opts });
+    }
 
     // Phase 1: 0–0.8s — fade in with slight zoom
-    text.animate([
-      { transform: 'scale(1.08)', opacity: 0 },
+    anim([
+      { transform: 'scale(1.1)', opacity: 0 },
       { transform: 'scale(1)', opacity: 1 }
-    ], { duration: 800, fill: 'forwards', ...ease });
+    ], { duration: 800 });
 
-    // Phase 2: 0.8s–2.8s — zoom in (scale 1→1.4)
+    // Phase 2: 1s–3s — hold then zoom in
     setTimeout(() => {
-      text.animate([
+      anim([
         { transform: 'scale(1)' },
-        { transform: 'scale(1.4)' }
-      ], { duration: 2000, fill: 'forwards', ...ease });
-    }, 800);
+        { transform: 'scale(1.5)' }
+      ], { duration: 2000 });
+    }, 1000);
 
-    // Phase 3: 2.8s–3.6s — invert bg→white, text→black
+    // Phase 3: 3s–3.8s — invert
     setTimeout(() => {
       splash.style.background = '#fff';
       text.style.color = '#000';
-    }, 2800);
+    }, 3000);
 
-    // Phase 4: 3.6s–5.6s — zoom out (1.4→1) on white bg
+    // Phase 4: 3.8s–5.8s — zoom out
     setTimeout(() => {
-      text.animate([
-        { transform: 'scale(1.4)' },
+      anim([
+        { transform: 'scale(1.5)' },
         { transform: 'scale(1)' }
-      ], { duration: 2000, fill: 'forwards', ...ease });
-    }, 3600);
+      ], { duration: 2000 });
+    }, 3800);
 
-    // Phase 5: 5.6s–6.6s — fade out
+    // Phase 5: 5.8s–6.8s — fade out
     setTimeout(() => {
-      text.animate([
+      anim([
         { opacity: 1 },
         { opacity: 0 }
-      ], { duration: 1000, fill: 'forwards', ...ease });
+      ], { duration: 1000 });
       splash.style.background = 'transparent';
-    }, 5600);
+    }, 5800);
 
     // Cleanup
-    setTimeout(() => splash.remove(), 6800);
+    setTimeout(() => splash.remove(), 7000);
   })();
 
   update();
