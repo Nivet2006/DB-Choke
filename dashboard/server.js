@@ -85,17 +85,17 @@ function buildDashboard() {
     --radius-sm: 6px;
   }
   html { font-size: 16px; }
-  @keyframes splashIn {
-    0% { transform: scale(1.15); opacity: 0; letter-spacing: 16px; }
-    100% { transform: scale(1); opacity: 1; letter-spacing: 4px; }
+  @keyframes splashFadeIn {
+    0% { transform: scale(1.08); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
   }
-  @keyframes splashPhase1 {
-    0% { background: #000; color: #fff; }
-    100% { background: #000; color: #fff; }
+  @keyframes splashZoomIn {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.4); }
   }
-  @keyframes splashPhase2 {
-    0% { background: #fff; color: #000; }
-    100% { background: #fff; color: #000; }
+  @keyframes splashZoomOut {
+    0% { transform: scale(1.4); }
+    100% { transform: scale(1); }
   }
   @keyframes splashFadeOut {
     0% { opacity: 1; }
@@ -105,11 +105,15 @@ function buildDashboard() {
     position: fixed; inset: 0; z-index: 9999;
     display: flex; align-items: center; justify-content: center;
     pointer-events: none;
+    background: #000;
+    transition: background 0.8s ease;
   }
   .splash span {
     font-family: 'Inter', sans-serif;
     font-size: clamp(36px, 10vw, 100px);
     font-weight: 800;
+    color: #fff;
+    transition: color 0.8s ease;
   }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -723,23 +727,36 @@ function buildDashboard() {
     const splash = document.getElementById('splash');
     const text = document.getElementById('splash-text');
     if (!splash) return;
-    splash.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;pointer-events:none;background:#000;color:#fff;transition:background 0.8s ease,color 0.8s ease';
-    text.style.cssText = 'font-family:Inter,sans-serif;font-size:clamp(36px,10vw,100px);font-weight:800;letter-spacing:4px;animation:splashIn 0.8s ease forwards';
-    // Phase 1: black bg, white text — 5s
+
+    // Phase 1: 0–0.8s — fade in, black bg white text
+    text.style.animation = 'splashFadeIn 0.8s ease forwards';
+
+    // Phase 2: 0.8s–2.8s — zoom in text (scale 1→1.4)
     setTimeout(() => {
-      // Phase 2: smooth transition to white bg, black text — 0.8s
+      text.style.animation = 'splashZoomIn 2s ease forwards';
+    }, 800);
+
+    // Phase 3: 2.8s–3.6s — smooth invert (bg black→white, text white→black)
+    setTimeout(() => {
       splash.style.background = '#fff';
-      splash.style.color = '#000';
-      // Hold for 5s
-      setTimeout(() => {
-        // Phase 3: fade out
-        text.style.animation = 'splashFadeOut 0.8s ease forwards';
-        splash.style.background = 'transparent';
-        setTimeout(() => {
-          splash.remove();
-        }, 900);
-      }, 5000);
-    }, 5000);
+      text.style.color = '#000';
+    }, 2800);
+
+    // Phase 4: 3.6s–5.6s — zoom out text (scale 1.4→1) on white bg black text
+    setTimeout(() => {
+      text.style.animation = 'splashZoomOut 2s ease forwards';
+    }, 3600);
+
+    // Phase 5: 5.6s–6.6s — fade out
+    setTimeout(() => {
+      text.style.animation = 'splashFadeOut 1s ease forwards';
+      splash.style.background = 'transparent';
+    }, 5600);
+
+    // Cleanup: remove splash from DOM
+    setTimeout(() => {
+      splash.remove();
+    }, 6800);
   })();
 
   update();
