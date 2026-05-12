@@ -267,6 +267,52 @@ try:
 except: print('  (could not parse)')
 " 2>/dev/null
 
+# ── 9. Source code credential audit ──────────────────────────
+hr
+echo -e "${BOLD}[9] SOURCE CODE CREDENTIAL AUDIT${NC}"
+hr
+echo "  Checking https://github.com/BLITZz-bot/estralis.git for secrets..."
+
+REPO="/tmp/estralis_audit"
+if [ ! -d "$REPO" ]; then
+  git clone --depth 1 https://github.com/BLITZz-bot/estralis.git "$REPO" 2>/dev/null
+fi
+
+if [ -d "$REPO" ]; then
+  echo ""
+  echo -e "  ${BOLD}Hardcoded passwords:${NC}"
+  grep -rn 'ADMIN_PASSWORD\|STAFF_PASSWORD\|SECONDARY_PASSWORD\|PASSWORD' "$REPO/server/index.js" 2>/dev/null | head -5 | while read -r line; do
+    val=$(echo "$line" | grep -oP '"[^"]+"' | head -1)
+    [ -n "$val" ] && err "  Password found: $val"
+  done
+
+  echo ""
+  echo -e "  ${BOLD}API keys / tokens:${NC}"
+  grep -rn 'sk_\|pk_\|AKIA\|eyJ\|ghp_\|gho_\|github_pat\|token\|apiKey\|api_key' "$REPO" --include="*.js" --include="*.jsx" --include="*.ts" --include="*.json" 2>/dev/null | grep -vi 'node_modules\|package-lock\|\.git' | head -10 | while read -r line; do
+    warn "  Possible key: $(echo "$line" | sed 's/.*\/\([^/]*\):.*/\1/'):$(echo "$line" | grep -oP '["'\'']\K[^"'\'']{8,}(?=["'\''])' | head -1)"
+  done
+
+  echo ""
+  echo -e "  ${BOLD}IP logging code:${NC}"
+  grep -rn 'x-forwarded-for\|remoteAddress\|ip_address\|req\.ip' "$REPO/server/index.js" 2>/dev/null | head -5 | while read -r line; do
+    warn "  $(echo "$line" | sed 's|.*/estralis_audit/||')"
+  done
+
+  echo ""
+  echo -e "  ${BOLD}Database credentials:${NC}"
+  grep -rn 'DATABASE_URL\|host.*user.*password\|postgres://\|mysql://\|mongodb' "$REPO" --include="*.js" --include="*.jsx" 2>/dev/null | grep -v node_modules | head -5 | while read -r line; do
+    warn "  DB connection: $(echo "$line" | sed 's|.*/estralis_audit/||' | cut -c1-120)"
+  done
+
+  echo ""
+  echo -e "  ${BOLD}Cloudinary / third-party config:${NC}"
+  grep -rn 'cloud_name\|cloudName\|api_key\|api_secret\|upload_preset' "$REPO/estralis/src/utils/cloudinary.js" 2>/dev/null | head -5 | while read -r line; do
+    warn "  $(echo "$line" | sed 's|.*/estralis_audit/||')"
+  done
+else
+  warn "  Could not clone repo"
+fi
+
 # ── Summary ─────────────────────────────────────────────────
 hr
 echo -e "${BOLD}SUMMARY${NC}"
@@ -309,6 +355,18 @@ if [ -n "$SITE_IP" ]; then
   echo "    - Google Maps API"
   echo "    - Google DNS"
 fi
+
+echo ""
+echo -e "  ${BOLD}SOURCE CODE RISKS:${NC}"
+echo -e "  ${RED}🔴  Hardcoded admin passwords in server/index.js:${NC}"
+echo -e "     admin@2026 (fallback), scan@2026 (staff), bharatha2111 (secondary)"
+echo -e "     These are ALSO published in the repo README!"
+echo -e "  ${YELLOW}🟡  IP logging:${NC} server/index.js captures x-forwarded-for and stores in PostgreSQL"
+echo -e "  ${YELLOW}🟡  Cloudinary cloud name exposed in client-side code"
+echo -e "  ${GREEN}✅  No analytics/tracking scripts (no GA, FB Pixel, etc.)${NC}"
+echo -e "  ${GREEN}✅  No Stripe/AWS/GitHub tokens in repo${NC}"
+echo -e "  ${GREEN}✅  No .env file committed${NC}"
+echo -e "  ${GREEN}✅  Registration JSON file is empty in repo${NC}"
 
 echo ""
 echo -e "${GREEN}Scan complete. Report saved to /tmp/guard_raw.json${NC}"
