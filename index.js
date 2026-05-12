@@ -10,6 +10,10 @@ const BASE_URL = 'https://estralisfest2026.vercel.app';
 const usedEvents = new Set();
 const TOR_ARG = process.argv.find(a => a.startsWith('--tor-ports'));
 const TOR_PORTS = TOR_ARG ? TOR_ARG.split('=')[1]?.split(',').map(Number).filter(Boolean) : (process.argv.includes('--tor') ? [9050] : []);
+const args = process.argv.slice(2);
+const LIST_EVENTS = args.includes('--list-events');
+const EVENT_IDX_ARG = args.find(a => a.startsWith('--event-idx'));
+const EVENT_IDX = EVENT_IDX_ARG ? parseInt(EVENT_IDX_ARG.split('=')[1] || args[args.indexOf('--event-idx') + 1], 10) : null;
 const DIRS = ['uploads', 'logs', 'generated_receipts', 'screenshots'];
 for (const d of DIRS) {
   const p = path.join(__dirname, d);
@@ -102,8 +106,9 @@ async function runRegistration(browser, regIndex, totalCount) {
 
     let card = null;
     let modal = null;
+    const maxRetries = EVENT_IDX !== null ? 1 : 10;
 
-    for (let retryEvent = 0; retryEvent < 10; retryEvent++) {
+    for (let retryEvent = 0; retryEvent < maxRetries; retryEvent++) {
       if (retryEvent > 0) {
         log(`${tag} 🔄 Trying another event...`);
         if (modal) await page.evaluate(() => {
@@ -117,13 +122,22 @@ async function runRegistration(browser, regIndex, totalCount) {
       await cards.first().waitFor({ state: 'attached', timeout: 30000 });
 
       if (eventSeeds.length === 0) {
-        for (let i = 0; i < await cards.count(); i++) {
+        if (EVENT_IDX !== null) {
           let n;
           try {
-            const p = cards.nth(i).locator('xpath=ancestor::div[contains(@class,"border-l")]');
-            n = await p.locator('h3').first().textContent({ timeout: 1000 });
+            const p = cards.nth(EVENT_IDX).locator('xpath=ancestor::div[contains(@class,"border-l")]');
+            n = await p.locator('h3').first().textContent({ timeout: 2000 });
           } catch { n = ''; }
-          if (!skipEvents.some(c => n.toUpperCase().includes(c)) && !usedEvents.has(n.toUpperCase())) eventSeeds.push({ idx: i, name: n || `Event ${i + 1}` });
+          eventSeeds.push({ idx: EVENT_IDX, name: n.trim() || `Event ${EVENT_IDX + 1}` });
+        } else {
+          for (let i = 0; i < await cards.count(); i++) {
+            let n;
+            try {
+              const p = cards.nth(i).locator('xpath=ancestor::div[contains(@class,"border-l")]');
+              n = await p.locator('h3').first().textContent({ timeout: 1000 });
+            } catch { n = ''; }
+            if (!skipEvents.some(c => n.toUpperCase().includes(c)) && !usedEvents.has(n.toUpperCase())) eventSeeds.push({ idx: i, name: n || `Event ${i + 1}` });
+          }
         }
       }
 
@@ -134,7 +148,7 @@ async function runRegistration(browser, regIndex, totalCount) {
         const parent = card.locator('xpath=ancestor::div[contains(@class,"border-l")]');
         eventName = await parent.locator('h3').first().textContent({ timeout: 2000 });
       } catch { eventName = pick.name; }
-      log(`${tag} 🎯 Trying: "${eventName}"`);
+      log(`${tag} 🎯 ${EVENT_IDX !== null ? `Targeting` : `Trying`}: "${eventName}"`);
       ongoingEntry.event = eventName;
       try {
         const prev = JSON.parse(fs.readFileSync(ONGOING_FILE, 'utf-8') || '[]');
@@ -348,14 +362,14 @@ async function runRegistration(browser, regIndex, totalCount) {
         semester: regData.semester, utr: regData.utr, senderUpi: regData.senderUpi,
         payeeUpi: regData.payeeUpi, referenceNumber: ref, status: 'SUCCESS',
       });
-      usedEvents.add(eventName.trim().toUpperCase());
+      if (EVENT_IDX === null) usedEvents.add(eventName.trim().toUpperCase());
       log(`${tag} ✅✅✅ SUCCESS — ${regData.fullName}${ref ? ' Ref:' + ref : ''}`);
       removeOngoing(ongoingEntry);
       await snap(page, `ok_${regIndex}`);
       return true;
     }
 
-    usedEvents.add(eventName.trim().toUpperCase());
+    if (EVENT_IDX === null) usedEvents.add(eventName.trim().toUpperCase());
     const hasRef = afterSubmitDebug.text.match(/(?:reference|ticket|registration|id)\s*[:\s#]*\s*([A-Z0-9]{6,})/i);
     const ref = hasRef?.[1] || '';
 
@@ -416,7 +430,33 @@ async function runPool(total, concurrency, fn) {
 }
 
 (async () => {
-  const args = process.argv.slice(2);
+  if (LIST_EVENTS) {
+    const browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+    });
+    const page = await browser.newPage();
+    await page.goto(BASE_URL + '#events', { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(3000);
+    const cards = page.locator('text=Access Protocol');
+    const count = await cards.count();
+    const names = [];
+    for (let i = 0; i < count; i++) {
+      let n;
+      try {
+        const p = cards.nth(i).locator('xpath=ancestor::div[contains(@class,"border-l")]');
+        n = await p.locator('h3').first().textContent({ timeout: 2000 });
+      } catch { n = ''; }
+      names.push({ idx: i, name: (n || `Event ${i + 1}`).trim() });
+    }
+    console.log('\nAvailable events:');
+    console.log('───'.repeat(12));
+    names.forEach(({ idx, name }) => console.log(`  ${String(idx + 1).padEnd(2)}${name}`));
+    console.log(`\nTotal: ${count} events`);
+    await browser.close();
+    process.exit(0);
+  }
+
   const INFINITE = args.includes('--infinite');
   const countIdx = args.find(a => /^\d+$/.test(a));
   const COUNT = INFINITE ? Infinity : (countIdx ? parseInt(countIdx) : fs.readFileSync(path.join(__dirname, 'NAMES.TXT'), 'utf-8').split('\n').filter(l => l.trim()).length);
@@ -424,7 +464,7 @@ async function runPool(total, concurrency, fn) {
   const HEADLESS = args.includes('--headful') ? false : true;
 
   log(`═`.repeat(50));
-  log(`ESTRALIS-BOT — ${INFINITE ? 'INFINITE' : COUNT} regs | ${PARALLEL} parallel | Headless: ${HEADLESS}`);
+  log(`ESTRALIS-BOT — ${INFINITE ? 'INFINITE' : COUNT} regs | ${PARALLEL} parallel | Headless: ${HEADLESS}${EVENT_IDX !== null ? ' | Event:' + EVENT_IDX : ''}`);
   log(`═`.repeat(50));
 
   ensureCsvFile();

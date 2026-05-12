@@ -116,14 +116,19 @@ install_deps() {
 
 setup_tor() {
   if ! command -v tor &>/dev/null; then
-    log_step "Installing Tor..."
-    sudo apt install -y tor 2>/dev/null
-    if [ $? -ne 0 ]; then
-      log_err "Tor install failed — run 'sudo apt install tor' manually"
-      return 1
-    fi
+    log_step "Installing Tor (sudo required)..."
+    sudo apt install -y tor 2>/dev/null || { log_err "Tor install failed — run 'sudo apt install tor' manually"; return 1; }
   fi
-  log_step "Tor available"
+  log_step "Tor installed"
+}
+
+get_ip() {
+  local proxy="$1"
+  if [ -n "$proxy" ]; then
+    curl -s --max-time 5 --proxy "$proxy" https://ifconfig.me 2>/dev/null || echo "unreachable"
+  else
+    curl -s --max-time 5 https://ifconfig.me 2>/dev/null || echo "unreachable"
+  fi
 }
 
 tor_instance() {
@@ -173,6 +178,7 @@ while true; do
   printf "  ${CYAN}%-8s${NC} %s\n" "1 2 3" "Quick parallel runs"
   printf "  ${CYAN}%-8s${NC} %s\n" "5 10 20" "Quick parallel runs"
   printf "  ${CYAN}%-8s${NC} %s\n" "C" "Custom count + parallel"
+  printf "  ${CYAN}%-8s${NC} %s\n" "E" "Target a specific event only"
   printf "  ${CYAN}%-8s${NC} %s\n" "A" "Run ALL ($TOTAL_NAMES)"
   printf "  ${CYAN}%-8s${NC} %s\n" "I" "Infinite loop (Faker)"
   echo ""
@@ -211,6 +217,29 @@ while true; do
       workers=${workers:-5}
       log_step "$count registrations, $workers parallel"
       run_bot $count --parallel "$workers"
+      ;;
+    E|e)
+      log_step "Fetching event list from estralisfest..."
+      OUTPUT=$(node "$SCRIPT_DIR/index.js" --list-events 2>/dev/null)
+      echo "$OUTPUT"
+      LAST_LINE=$(echo "$OUTPUT" | grep -oP 'Total:\s*\K\d+')
+      echo ""
+      echo -n "Select event number: "; read -r eventNum
+      [[ -z "$eventNum" ]] && continue
+      eventIdx=$((eventNum - 1))
+      if [ $eventIdx -lt 0 ] 2>/dev/null; then continue; fi
+      if [ -n "$LAST_LINE" ] && [ "$eventIdx" -ge "$LAST_LINE" ] 2>/dev/null; then
+        log_err "Invalid event number — max is $LAST_LINE"
+        continue
+      fi
+      reset_csv
+      echo -n "How many? [10]: "; read -r count
+      count=${count:-10}
+      set_target "$count"
+      echo -n "Parallel workers? [5]: "; read -r workers
+      workers=${workers:-5}
+      log_step "$count registrations for event #$eventNum, $workers parallel"
+      run_bot $count --parallel "$workers" --event-idx "$eventIdx"
       ;;
     A|a)
       reset_csv
@@ -311,19 +340,14 @@ while true; do
       ;;
     ZZ|zz)
       setup_tor || continue
-      reset_csv
       echo -n "How many? [$TOTAL_NAMES]: "; read -r count
       count=${count:-$TOTAL_NAMES}
-      set_target "$count"
       echo -n "Parallel workers? [10]: "; read -r workers
       workers=${workers:-10}
-      echo -n "Infinite? (y/n) [n]: "; read -r inf
-      extra=""; [[ "$inf" == "y" || "$inf" == "Y" ]] && extra="--infinite" && set_target "INF"
       TOR_BASE=9050
-      TOR_PORTS=""
       TOR_COUNT=$(( workers > 5 ? 5 : workers ))
       log_step "Starting $TOR_COUNT Tor instances..."
-      tor_ok=0
+      tor_ok=0; TOR_PORTS=""
       for i in $(seq 0 $((TOR_COUNT - 1))); do
         p=$((TOR_BASE + i))
         if tor_instance "$p"; then
@@ -333,10 +357,22 @@ while true; do
       done
       TOR_PORTS="${TOR_PORTS%,}"
       if [ $tor_ok -eq 0 ]; then
-        log_err "No Tor instances started — check 'tor --version' or install Tor"
+        log_err "No Tor instances started — check 'tor --version'"
         continue
       fi
-      log_warn "$tor_ok/$TOR_COUNT Tor instances running on ports $TOR_PORTS"
+      FIRST_PORT=$(echo "$TOR_PORTS" | cut -d',' -f1)
+      echo ""
+      echo -e "  ${BOLD}🌐 IP CHECK${NC}"
+      echo -e "  ${YELLOW}Real IP:${NC}     $(get_ip)"
+      echo -e "  ${YELLOW}Tor IP:${NC}      $(get_ip "socks5://127.0.0.1:$FIRST_PORT")"
+      echo ""
+      echo -n "Proceed with $workers workers using Tor? (y/N): "; read -r confirm
+      [[ "$confirm" != "y" && "$confirm" != "Y" ]] && log_warn "Cancelled" && continue
+      reset_csv
+      set_target "$count"
+      echo -n "Infinite? (y/n) [n]: "; read -r inf
+      extra=""; [[ "$inf" == "y" || "$inf" == "Y" ]] && extra="--infinite" && set_target "INF"
+      log_warn "$tor_ok/$TOR_COUNT Tor instances on ports $TOR_PORTS"
       if ! command -v cloudflared &>/dev/null; then
         log_warn "cloudflared not found — dashboard only (no tunnel)"
       fi
